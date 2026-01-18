@@ -1,0 +1,34 @@
+version: 2
+
+models:
+  - name: dim_channels
+    description: "Dimension table for Telegram channels"
+    columns:
+      - name: channel_key
+        description: "Surrogate key for channel"
+        tests:
+          - unique
+          - not_null
+
+  - name: fct_messages
+    description: "Fact table containing one row per message"
+    columns:
+      - name: message_key
+        description: "Surrogate key for message"
+        tests:
+          - unique
+          - not_null
+      - name: channel_key
+        description: "Foreign key to dim_channels"
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_channels')
+                field: channel_key
+      - name: date_key
+        description: "Foreign key to dim_dates"
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_dates')
+                field: date_key
