@@ -1,0 +1,29 @@
+# Scraping
+telethon
+python-dotenv
+pandas
+
+# Database & dbt
+psycopg2-binary
+sqlalchemy
+dbt-postgres
+
+# Object Detection
+ultralytics
+opencv-python
+pillow
+
+# API
+fastapi
+uvicorn[standard]
+pydantic
+
+# Orchestration
+dagster
+dagster-postgres
+dagster-dbt
+
+# Utilities
+python-multipart
+httpx
+loguru
