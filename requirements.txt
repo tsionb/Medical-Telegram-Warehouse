@@ -23,6 +23,7 @@ pydantic
 dagster
 dagster-postgres
 dagster-dbt
+dagster-webserver
 
 # Utilities
 python-multipart
