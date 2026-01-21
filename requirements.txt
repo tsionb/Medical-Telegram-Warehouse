@@ -12,6 +12,7 @@ dbt-postgres
 ultralytics
 opencv-python
 pillow
+tqdm
 
 # API
 fastapi
