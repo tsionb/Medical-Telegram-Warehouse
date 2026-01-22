@@ -1,0 +1,3 @@
+load_from:
+  - python_module: dagster_pipeline.pipeline
+  - python_module: dagster_pipeline.simple_pipeline
