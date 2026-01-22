@@ -21,7 +21,6 @@ End-to-end data pipeline for analyzing Ethiopian medical businesses from Telegra
 - JSON serialization with UTF-8 encoding
 - Error recovery and duplicate prevention
 
----
 
 ### **Task 2: Data Modeling and Transformation**
 **Objective**: Transform raw data into analytical star schema using dbt
@@ -53,67 +52,169 @@ fct_messages (Fact)
 - Product mention tracking
 
 
+### **Task 3: Data Enrichment with Object Detection (YOLO)**
+**Objective**: Use computer vision to analyze images and integrate findings into the data warehouse
+
+**Results**:
+- Processed **279 medical product images** using YOLOv8n
+- Detected **418 total objects** across all images
+- Classified images into **4 categories**:
+  - **Lifestyle** (63 images, 22.6%) - People without products
+  - **Product Display** (36 images, 12.9%) - Products/containers without people
+  - **Promotional** (7 images, 2.5%) - People with products
+  - **Other** (173 images, 62.0%) - No relevant objects detected
+- Created `fct_image_detections` dbt model integrating with existing star schema
+- Loaded results to PostgreSQL with data validation
+
+**Key Insights**:
+1. **Engagement Analysis**: Promotional posts get **788.05 more average views** than product display posts
+2. **Channel Visual Content**:
+   - @lobelia4cosmetics: 100% images (50/50 messages)
+   - @CheMed123: 92% images (46/50 messages)
+   - @EAHCI: 88% images (44/50 messages)
+   - @tikvahpharma: 60% images (30/50 messages)
+   - @tenamereja: 48% images (24/50 messages)
+3. **Top Detected Objects**: person (60), bottle (19), clock (5), orange (3), chair (2)
+
+**Technical Implementation**:
+- **Script**: `src/yolo_detect.py` - Automated image scanning and classification
+- **Loader**: `src/load_yolo_results.py` - PostgreSQL integration with error handling
+- **Analysis**: `scripts/yolo_analysis_report.py` - Business insights extraction
+
+**Limitations & Solutions**:
+- **Limitation**: YOLOv8 generic categories (no medical specificity)
+- **Solution**: Future fine-tuning on medical product datasets
+- **Limitation**: Can't read text in images
+- **Solution**: Integrate OCR for product name extraction
+
+
+### **Task 4: Analytical API with FastAPI**
+**Objective**: Expose data warehouse insights through RESTful API endpoints
+
+**Results**:
+- Built **4 analytical endpoints** serving business intelligence:
+  1. **`/api/reports/top-products`** - Most frequently mentioned medical products
+  2. **`/api/channels/{channel_name}/activity`** - Channel posting trends and engagement
+  3. **`/api/search/messages`** - Search messages by keyword (e.g., "paracetamol")
+  4. **`/api/reports/visual-content`** - Image usage statistics across channels
+- Implemented **Pydantic schemas** for request/response validation
+- Added comprehensive error handling and HTTP status codes
+- Generated **automatic OpenAPI documentation** at `/docs`
+
+**API Architecture**:
+```python
+api/
+├── main.py              # FastAPI application
+├── schemas.py           # Pydantic models
+├── database.py          # PostgreSQL connection
+└── endpoints/           # Route handlers
+```
+
+**Sample Requests**:
+```bash
+# Top 10 medical products
+curl "http://localhost:8000/api/reports/top-products?limit=10"
+
+# Channel activity for CheMed
+curl "http://localhost:8000/api/channels/CheMed123/activity"
+
+# Search for paracetamol mentions
+curl "http://localhost:8000/api/search/messages?query=paracetamol&limit=20"
+```
+
+**Features**:
+-  SQLAlchemy ORM for database operations
+-  Async database connections
+-  JWT authentication (ready for production)
+-  Rate limiting and CORS configuration
+-  Comprehensive API documentation
+
+
+### **Task 5: Pipeline Orchestration with Dagster**
+**Objective**: Automate the entire data pipeline with scheduling and monitoring
+
+**Results**:
+- Created **end-to-end orchestration pipeline** with 4 sequential operations:
+  1. **`scrape_telegram_data`** - Run Telegram scraper
+  2. **`load_raw_to_postgres`** - Load JSON to PostgreSQL
+  3. **`run_dbt_transformations`** - Execute dbt models
+  4. **`run_yolo_enrichment`** - Run object detection and load results
+- Implemented **daily scheduling** (2 AM UTC) for automated execution
+- Built **observable pipeline** with Dagster UI for monitoring
+- Added **error recovery** and comprehensive logging
+
+**Pipeline Architecture**:
+```python
+@pipeline
+def medical_telegram_pipeline():
+    scrape = scrape_telegram_data()
+    load = load_raw_to_postgres()
+    dbt = run_dbt_transformations()
+    yolo = run_yolo_enrichment()
+    
+    load.depends_on(scrape)    # Load after scraping
+    dbt.depends_on(load)       # Transform after loading
+    yolo.depends_on(dbt)       # Enrich after transformation
+```
+
+**Key Features**:
+- **Schedule**: Daily automated execution at 2 AM UTC
+- **Monitoring**: Real-time pipeline visualization in Dagster UI
+- **Error Handling**: Automatic retries and failure notifications
+- **Dependencies**: Proper execution order enforcement
+- **Logging**: Centralized log management across all steps
+
+**Usage**:
+```bash
+# Start Dagster UI
+dagster dev -f pipeline.py
+
+# Access UI at: http://localhost:3000
+
+# Manual pipeline execution
+dagster pipeline execute -f pipeline.py
+```
+
+**Screenshots Available**:
+1. Dagster UI showing pipeline graph
+2. Successful pipeline execution (all green checks)
+3. Schedule configuration (daily at 2 AM)
+4. Step-by-step execution logs
+
+
 ##  Technologies Used
-- **Data Extraction**: Python, Telethon, asyncio
-- **Data Storage**: PostgreSQL, JSON files
-- **Data Transformation**: dbt (Data Build Tool)
-- **Data Modeling**: Star Schema, Dimensional Modeling
-- **Quality Assurance**: dbt tests, validation scripts
+- **Data Extraction**: Python 3.8+, Telethon, asyncio
+- **Data Storage**: PostgreSQL 15, JSON files, organized directories
+- **Data Transformation**: dbt (Data Build Tool), SQL
+- **Computer Vision**: YOLOv8, Ultralytics, OpenCV
+- **API Development**: FastAPI, Pydantic, SQLAlchemy, Uvicorn
+- **Orchestration**: Dagster, Dagster-Webserver
+- **Data Modeling**: Kimball Star Schema, Dimensional Modeling
+- **Quality Assurance**: dbt tests, custom validation scripts, Pydantic validation
+- **Documentation**: dbt docs, OpenAPI/Swagger, markdown reports
 
----
 
-## Requirements Met
+##  Business Insights Summary
 
-### Task 1:
-- Working Telegram scraper with error handling
-- At least 3 channels scraped (5 completed)
-- At least 50 messages per channel (50 each)
-- Images downloaded and organized
-- JSON files in partitioned data lake
-- Comprehensive logging
+### **Channel Analysis**:
+1. **Visual Content Leaders**: 
+   - Cosmetics channels (@lobelia4cosmetics) use 100% images
+   - Medical channels average 75% image usage
+   - Information channels use less visual content (48%)
 
-### Task 2:
-- Raw data loaded to PostgreSQL
-- dbt project with staging and mart models
-- Star schema implemented (dimensions + fact table)
-- Data quality tests
-- Documentation generated
+2. **Engagement Patterns**:
+   - Promotional content (people + products) drives highest engagement
+   - Product-only images have lower view counts
+   - Channels with consistent visual content maintain higher engagement
 
----
+3. **Content Strategy**:
+   - Pharmaceutical channels focus on product display
+   - Cosmetics channels use lifestyle imagery
+   - Medical training channels use educational content
 
-##  Quick Start
-
-1. **Set up environment**:
-   ```bash
-   pip install -r requirements.txt
-   cp .env.example .env  # Add Telegram API credentials
-   ```
-
-2. **Run scraper (Task 1)**:
-   ```bash
-   python src/scraper.py
-   ```
-
-3. **Load to database (Task 2)**:
-   ```bash
-   python src/load_to_postgres.py
-   ```
-
-4. **Transform with dbt**:
-   ```bash
-   cd medical_warehouse
-   dbt run
-   dbt test
-   dbt docs serve
-   ```
-
----
-
-##  Data Insights
-- **5 medical channels** analyzed covering pharmaceuticals, cosmetics, and health information
-- **250 products/messages** available for analysis
-- **77.6% of messages** contain product images
-- Star schema enables business questions:
-  - Which channels have highest engagement?
-  - What are trending medical products?
-  - How does visual content impact views?
+### **Technical Architecture Benefits**:
+- **Scalability**: Modular design allows easy addition of new channels
+- **Maintainability**: Clear separation of concerns across 5 tasks
+- **Extensibility**: API-first approach enables new analytical queries
+- **Reliability**: Comprehensive error handling and data validation
+- **Observability**: Full pipeline monitoring with Dagster
